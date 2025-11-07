@@ -156,6 +156,40 @@ def model_prophet(ts_data, n_steps):
     forecast.index = pd.date_range(start=ts_data.index[-1] + pd.DateOffset(months=1), periods=n_steps, freq='MS')
     return forecast
 
+@st.cache_data # <-- ¡ESTA ES LA MAGIA!
+def run_model_pipeline(_ts_train, _ts_test, _ts_full, _n_forecast):
+    """
+    Ejecuta todos los 5 modelos y devuelve sus métricas y predicciones.
+    El decorador @st.cache_data "memoriza" el resultado.
+    """
+    st.write("Ejecutando pipeline de modelos (Esto se cacheará la primera vez)...")
+    
+    model_pipeline = [
+        ('Regresión Lineal', model_linear_regression),
+        ('Promedio Móvil (6m)', model_moving_average),
+        ('Suavizamiento Exponencial', model_exp_smoothing),
+        ('ARIMA', model_arima),
+        ('Prophet', model_prophet)
+    ]
+    
+    all_metrics = {}
+    all_forecasts = {}
+
+    for name, func in model_pipeline:
+        try:
+            # Re-usamos la función 'run_model' que ya teníamos
+            resultado = run_model(name, func, _ts_train, _ts_test, _ts_full, _n_forecast)
+            all_metrics[name] = resultado['metrics']
+            all_forecasts[name] = resultado['forecast']
+        except Exception as e:
+            st.error(f"Error al ejecutar el modelo '{name}': {e}")
+    
+    df_metrics = pd.DataFrame(all_metrics).T.sort_values(by='MAPE')
+    df_forecast = pd.DataFrame(all_forecasts)
+    df_forecast.index.name = "Fecha"
+    
+    return df_metrics, df_forecast
+
 # --- Función de Gemini AI ---
 
 def get_gemini_analysis(metrics_summary, n_meses, metrica_nombre):
@@ -250,34 +284,9 @@ if df is not None:
                         ts_train = ts_full.iloc[:-test_size]
                         ts_test = ts_full.iloc[-test_size:]
                         
-                        # --- 3. Ejecución de Modelos ---
-                        st.write("Entrenando modelos y calculando métricas...")
-                        
-                        resultados_modelos = []
-                        
-                        # Lista de modelos a ejecutar
-                        model_pipeline = [
-                            ('Regresión Lineal', model_linear_regression),
-                            ('Promedio Móvil (6m)', model_moving_average),
-                            ('Suavizamiento Exponencial', model_exp_smoothing),
-                            ('ARIMA', model_arima),
-                            ('Prophet', model_prophet)
-                        ]
-                        
-                        all_metrics = {}
-                        all_forecasts = {}
-                        
-                        for name, func in model_pipeline:
-                            try:
-                                resultado = run_model(name, func, ts_train, ts_test, ts_full, n_meses_prediccion)
-                                all_metrics[name] = resultado['metrics']
-                                all_forecasts[name] = resultado['forecast']
-                            except Exception as e:
-                                st.error(f"Error al ejecutar el modelo '{name}': {e}")
-                        
-                        df_metrics = pd.DataFrame(all_metrics).T.sort_values(by='MAPE')
-                        df_forecast = pd.DataFrame(all_forecasts)
-                        df_forecast.index.name = "Fecha"
+                        # --- 3. Ejecución de Modelos (AHORA CACHEADO) ---
+                        # Esta función SÓLO se ejecutará si los inputs han cambiado.
+                        df_metrics, df_forecast = run_model_pipeline(ts_train, ts_test, ts_full, n_meses_prediccion)
 
                         # --- 4. Análisis con Gemini ---
                         st.write("Enviando resultados a Gemini para análisis...")
@@ -329,3 +338,4 @@ if df is not None:
 else:
 
     st.info("Cargando datos... Si el error persiste, revisa el nombre del archivo.")
+
