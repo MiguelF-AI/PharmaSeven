@@ -17,7 +17,7 @@ st.set_page_config(layout="wide", page_title="Dashboard de Predicción de Ventas
 warnings.filterwarnings('ignore') # Ocultar advertencias de modelos
 
 # --- Constantes y Nombres ---
-NOMBRE_ARCHIVO_DATOS = 'datos_finales_listos_para_modelo.csv'
+NOMBRE_ARCHIVO_DATOS = 'data/datos_finales_listos_para_modelo.csv'
 COLUMNA_PRODUCTO = 'Producto - Descripción'
 COLUMNA_CLIENTE = 'Cliente - Descripción'
 COLUMNA_FECHA = 'Fecha'
@@ -327,4 +327,5 @@ if df is not None:
                             st.caption("MAPE: Error Porcentual Absoluto Medio (%).")
                             st.caption("Valores más bajos son mejores.")
 else:
+
     st.info("Cargando datos... Si el error persiste, revisa el nombre del archivo.")
