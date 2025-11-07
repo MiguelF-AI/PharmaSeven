@@ -215,12 +215,41 @@ def model_croston(ts_data, n_steps):
     
     return pd.Series(forecast, index=pd.date_range(start=ts_data.index[-1] + pd.DateOffset(months=1), periods=n_steps, freq='MS'))
 
-@st.cache_data # <-- ¡ESTA ES LA MAGIA!
-def run_model_pipeline(_ts_train, _ts_test, _ts_full, _n_forecast):
+@st.cache_data # ¡Se mantiene el caché!
+def run_model_pipeline(_df_completo, _productos_sel, _clientes_sel, _metrica_sel, _n_forecast):
     """
-    Ejecuta todos los 5 modelos y devuelve sus métricas y predicciones.
-    El decorador @st.cache_data "memoriza" el resultado.
+    Ejecuta el pipeline completo.
+    Ahora recibe los FILTROS como argumentos para que el caché funcione correctamente.
     """
+    
+    # --- 1. Filtrar datos (DENTRO del caché) ---
+    # Si las tuplas de filtros están vacías, no hacer nada
+    if not _productos_sel or not _clientes_sel:
+        st.warning("Advertencia: No hay productos o clientes seleccionados.")
+        return pd.DataFrame(), pd.DataFrame(), None # Devolver DFs vacíos y ts_full=None
+        
+    df_filtrado = _df_completo[
+        (_df_completo[COLUMNA_PRODUCTO].isin(_productos_sel)) &
+        (_df_completo[COLUMNA_CLIENTE].isin(_clientes_sel))
+    ]
+    
+    # --- 2. Preparar Series de Tiempo (DENTRO del caché) ---
+    ts_full = preparar_series_de_tiempo(df_filtrado, _metrica_sel)
+    
+    if ts_full is None:
+        st.warning("Advertencia: No hay suficientes datos para la serie de tiempo con esos filtros.")
+        return pd.DataFrame(), pd.DataFrame(), None
+
+    # --- 3. División Train/Test (DENTRO del caché) ---
+    test_size = _n_forecast
+    if len(ts_full) <= test_size:
+        st.error(f"Error: Se necesitan más de {test_size} meses para la validación.")
+        return pd.DataFrame(), pd.DataFrame(), ts_full # Devolver ts_full para el gráfico
+
+    ts_train = ts_full.iloc[:-test_size]
+    ts_test = ts_full.iloc[-test_size:]
+    
+    # --- 4. Pipeline de Modelos (Esto ya estaba) ---
     st.write("Ejecutando pipeline de modelos (Esto se cacheará la primera vez)...")
     
     model_pipeline = [
@@ -237,18 +266,19 @@ def run_model_pipeline(_ts_train, _ts_test, _ts_full, _n_forecast):
 
     for name, func in model_pipeline:
         try:
-            # Re-usamos la función 'run_model' que ya teníamos
-            resultado = run_model(name, func, _ts_train, _ts_test, _ts_full, _n_forecast)
+            # Usamos las variables locales que acabamos de crear
+            resultado = run_model(name, func, ts_train, ts_test, ts_full, _n_forecast)
             all_metrics[name] = resultado['metrics']
             all_forecasts[name] = resultado['forecast']
         except Exception as e:
             st.error(f"Error al ejecutar el modelo '{name}': {e}")
-    
+
     df_metrics = pd.DataFrame(all_metrics).T.sort_values(by='MAPE')
     df_forecast = pd.DataFrame(all_forecasts)
     df_forecast.index.name = "Fecha"
     
-    return df_metrics, df_forecast
+    # Devolvemos también ts_full para poder graficarlo fuera
+    return df_metrics, df_forecast, ts_full
 
 # --- Función de Gemini AI ---
 
@@ -325,79 +355,79 @@ if df is not None:
         else:
             with st.spinner(f"Ejecutando predicción para {n_meses_prediccion} meses... Esto puede tardar unos minutos..."):
                 
-                # --- 1. Preparación de Datos ---
-                df_filtrado = df[
-                    (df[COLUMNA_PRODUCTO].isin(productos_seleccionados)) &
-                    (df[COLUMNA_CLIENTE].isin(clientes_seleccionados))
-                ]
-                
-                ts_full = preparar_series_de_tiempo(df_filtrado, metrica_seleccionada)
-                
+                # --- 1. Conversión de filtros a Tuplas ---
+                # Las tuplas son "hashables" y garantizan que el caché funcione.
+                # sorted() asegura que ['A', 'B'] y ['B', 'A'] se traten como el mismo filtro.
+                productos_tuple = tuple(sorted(productos_seleccionados))
+                clientes_tuple = tuple(sorted(clientes_seleccionados))
+
+                # --- 2. Ejecución del Pipeline Cacheado ---
+                # Pasamos el DataFrame original (df) y los filtros (tuplas)
+                df_metrics, df_forecast, ts_full = run_model_pipeline(
+                    df, 
+                    productos_tuple,
+                    clientes_tuple,
+                    metrica_seleccionada,
+                    n_meses_prediccion
+                )
+
+                # --- 3. Mostrar Resultados ---
+                # Comprobar si la ejecución fue exitosa (si ts_full no es None)
                 if ts_full is not None:
                     
-                    # --- 2. División Train/Test para Métricas ---
-                    # Usaremos los últimos N meses (igual al horizonte) como test set
-                    test_size = n_meses_prediccion
-                    if len(ts_full) <= test_size:
-                        st.error(f"Error: No hay suficientes datos. Se necesitan más de {test_size} meses para la validación.")
-                    else:
-                        ts_train = ts_full.iloc[:-test_size]
-                        ts_test = ts_full.iloc[-test_size:]
-                        
-                        # --- 3. Ejecución de Modelos (AHORA CACHEADO) ---
-                        # Esta función SÓLO se ejecutará si los inputs han cambiado.
-                        df_metrics, df_forecast = run_model_pipeline(ts_train, ts_test, ts_full, n_meses_prediccion)
-
-                        # --- 4. Análisis con Gemini ---
+                    # --- 4. Análisis con Gemini ---
+                    # Comprobar si se generaron métricas (si no hubo error en train/test)
+                    if not df_metrics.empty:
                         st.write("Enviando resultados a Gemini para análisis...")
                         with st.spinner("🧠 Gemini está pensando..."):
                             analisis_gemini = get_gemini_analysis(df_metrics, n_meses_prediccion, metrica_seleccionada)
-
-                        # --- 5. Mostrar Resultados ---
+                        
                         st.subheader("🤖 Análisis y Recomendación (Gemini AI)")
                         st.markdown(analisis_gemini)
-                        
-                        st.subheader("📊 Gráfico de Predicción vs Histórico")
-                        
-                        fig = go.Figure()
-                        # Dato Histórico
+                    else:
+                        st.info("No se generó análisis de IA (datos insuficientes para validación).")
+
+                    # --- 5. Gráfico ---
+                    st.subheader("📊 Gráfico de Predicción vs Histórico")
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=ts_full.index, y=ts_full.values,
+                        mode='lines+markers',
+                        name='Datos Históricos'
+                    ))
+                    # Predicciones
+                    for model_name in df_forecast.columns:
                         fig.add_trace(go.Scatter(
-                            x=ts_full.index, y=ts_full.values,
-                            mode='lines+markers',
-                            name='Datos Históricos'
+                            x=df_forecast.index, y=df_forecast[model_name],
+                            mode='lines',
+                            name=f'Predicción: {model_name}'
                         ))
-                        # Predicciones
-                        for model_name in df_forecast.columns:
-                            fig.add_trace(go.Scatter(
-                                x=df_forecast.index, y=df_forecast[model_name],
-                                mode='lines',
-                                name=f'Predicción: {model_name}'
-                            ))
-                        
-                        fig.update_layout(
-                            title=f"Predicción de '{metrica_seleccionada}'",
-                            xaxis_title="Fecha",
-                            yaxis_title=metrica_seleccionada,
-                            legend_title="Series"
-                        )
-                        st.plotly_chart(fig, use_container_width=True)
-                        
-                        # Tablas de Resultados
-                        col1, col2 = st.columns(2)
-                        
-                        with col1:
-                            st.subheader(f"🗓️ Tabla de Predicciones (Próximos {n_meses_prediccion} meses)")
-                            st.dataframe(df_forecast.style.format("{:,.2f}"))
-                        
-                        with col2:
-                            st.subheader("🏆 Métricas de Desempeño (Test Set)")
-                            st.dataframe(df_metrics.style.format("{:,.2f}"))
-                            st.caption("RMSE: Error Cuadrático Medio (en unidades).")
-                            st.caption("MAPE: Error Porcentual Absoluto Medio (%).")
-                            st.caption("Valores más bajos son mejores.")
+                    
+                    fig.update_layout(
+                        title=f"Predicción de '{metrica_seleccionada}'",
+                        xaxis_title="Fecha",
+                        yaxis_title=metrica_seleccionada,
+                        legend_title="Series"
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    # --- 6. Tablas de Resultados ---
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.subheader(f"🗓️ Tabla de Predicciones")
+                        st.dataframe(df_forecast.style.format("{:,.2f}"))
+                    
+                    with col2:
+                        st.subheader("🏆 Métricas de Desempeño (Test Set)")
+                        st.dataframe(df_metrics.style.format("{:,.2f}"))
+                        st.caption("Valores más bajos son mejores.")
+                
+                else:
+                    st.warning("No se pudieron generar predicciones con los filtros seleccionados.")
 else:
 
     st.info("Cargando datos... Si el error persiste, revisa el nombre del archivo.")
+
 
 
 
