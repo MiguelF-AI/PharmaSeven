@@ -367,9 +367,9 @@ if df is not None:
                             name='Datos Históricos'
                         ))
                         # Predicciones
-                        for model_name, forecast_series in all_forecasts.items():
+                        for model_name in df_forecast.columns:
                             fig.add_trace(go.Scatter(
-                                x=forecast_series.index, y=forecast_series.values,
+                                x=df_forecast.index, y=df_forecast[model_name],
                                 mode='lines',
                                 name=f'Predicción: {model_name}'
                             ))
@@ -398,5 +398,6 @@ if df is not None:
 else:
 
     st.info("Cargando datos... Si el error persiste, revisa el nombre del archivo.")
+
 
 
