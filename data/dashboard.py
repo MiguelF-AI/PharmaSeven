@@ -122,20 +122,34 @@ def model_exp_smoothing(ts_data, n_steps):
     return forecast
 
 def model_arima(ts_data, n_steps):
-    """Auto-ARIMA para encontrar el mejor modelo ARIMA."""
+    """
+    Auto-ARIMA (SARIMA) optimizado para velocidad en el dashboard.
+    """
+    
+    # --- Parámetros de velocidad ---
+    # stepwise=True (que ya teníamos) es la clave principal.
+    # Los siguientes parámetros 'max_' limitan el espacio de búsqueda.
+    
     model = auto_arima(ts_data, 
+                       seasonal=True,        # Activar SARIMA
+                       m=12,                 # Estacionalidad de 12 meses
+                       stepwise=True,        # Búsqueda "inteligente" (¡la más rápida!)
+                       suppress_warnings=True,
+                       error_action='ignore',
+                       
+                       # --- ¡NUEVOS LÍMITES PARA VELOCIDAD! ---
+                       max_p=2,              # Máximo orden P (de 3 a 2)
+                       max_q=2,              # Máximo orden Q (de 3 a 2)
+                       max_P=1,              # Máximo orden P estacional (de 2 a 1)
+                       max_Q=1,              # Máximo orden Q estacional (de 2 a 1)
+                       
+                       # Parámetros que ya teníamos
                        start_p=1, start_q=1,
-                       test='adf',       # test de Dickey-Fuller para estacionariedad
-                       max_p=3, max_q=3,
-                       m=12,             # Frecuencia (12 meses)
-                       d=None,           # Dejar que determine 'd'
-                       seasonal=True,    # Activar estacionalidad
-                       start_P=0, 
-                       D=1, 
-                       trace=False,
-                       error_action='ignore',  
-                       suppress_warnings=True, 
-                       stepwise=True)
+                       start_P=0,
+                       d=None,               # Dejar que determine 'd'
+                       D=1,                  # Asumir una diferencia estacional
+                       trace=False
+                       )
     
     forecast = model.predict(n_periods=n_steps)
     return forecast
@@ -156,6 +170,51 @@ def model_prophet(ts_data, n_steps):
     forecast.index = pd.date_range(start=ts_data.index[-1] + pd.DateOffset(months=1), periods=n_steps, freq='MS')
     return forecast
 
+def model_croston(ts_data, n_steps):
+    """Modelo de Croston para demanda intermitente."""
+    
+    # 1. Separar la serie
+    non_zero_data = ts_data[ts_data > 0]
+    
+    # Si no hay ventas, la predicción es 0
+    if non_zero_data.empty:
+        return pd.Series(np.zeros(n_steps), index=pd.date_range(start=ts_data.index[-1] + pd.DateOffset(months=1), periods=n_steps, freq='MS'))
+    
+    # 2. Calcular los intervalos entre ventas
+    indices = np.where(ts_data > 0)[0]
+    
+    # Si solo hay 1 venta, no podemos calcular intervalos
+    if len(indices) < 2:
+        return pd.Series(np.zeros(n_steps), index=pd.date_range(start=ts_data.index[-1] + pd.DateOffset(months=1), periods=n_steps, freq='MS'))
+    
+    # El primer intervalo es desde el inicio + 1
+    first_interval = indices[0] + 1
+    other_intervals = np.diff(indices)
+    
+    # Combinar en una Serie de pandas
+    intervals = pd.Series(np.concatenate(([first_interval], other_intervals)), index=non_zero_data.index)
+
+    # 3. Aplicar Suavizamiento Exponencial Simple (SES) a ambas series
+    # Usamos 'estimated' para que encuentre el mejor alpha
+    ses_demand = SimpleExpSmoothing(non_zero_data, initialization_method="estimated").fit()
+    ses_interval = SimpleExpSmoothing(intervals, initialization_method="estimated").fit()
+    
+    # 4. Pronosticar el siguiente valor de cada uno
+    forecast_demand = ses_demand.forecast(1).iloc[0]
+    forecast_interval = ses_interval.forecast(1).iloc[0]
+    
+    # 5. Calcular la predicción de Croston
+    # Evitar división por cero
+    if forecast_interval == 0:
+        forecast_value = 0
+    else:
+        forecast_value = forecast_demand / forecast_interval
+        
+    # El pronóstico de Croston es un valor constante (la tasa promedio)
+    forecast = np.repeat(forecast_value, n_steps)
+    
+    return pd.Series(forecast, index=pd.date_range(start=ts_data.index[-1] + pd.DateOffset(months=1), periods=n_steps, freq='MS'))
+
 @st.cache_data # <-- ¡ESTA ES LA MAGIA!
 def run_model_pipeline(_ts_train, _ts_test, _ts_full, _n_forecast):
     """
@@ -169,7 +228,8 @@ def run_model_pipeline(_ts_train, _ts_test, _ts_full, _n_forecast):
         ('Promedio Móvil (6m)', model_moving_average),
         ('Suavizamiento Exponencial', model_exp_smoothing),
         ('ARIMA', model_arima),
-        ('Prophet', model_prophet)
+        ('Prophet', model_prophet),
+        ('Método Croston', model_croston)
     ]
     
     all_metrics = {}
@@ -338,4 +398,5 @@ if df is not None:
 else:
 
     st.info("Cargando datos... Si el error persiste, revisa el nombre del archivo.")
+
 
