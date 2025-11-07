@@ -242,15 +242,21 @@ def model_croston(ts_data, n_steps):
     
     return pd.Series(forecast, index=pd.date_range(start=ts_data.index[-1] + pd.DateOffset(months=1), periods=n_steps, freq='MS'))
 
-@st.cache_data # ¡Se mantiene el caché!
-def run_model_pipeline(_df_completo, _productos_sel, _clientes_sel, _metrica_sel, _n_forecast):
+@st.cache_data # ¡Mantenemos el caché!
+def run_model_pipeline(_productos_sel, _clientes_sel, _metrica_sel, _n_forecast): # <--- CAMBIO AQUÍ
     """
     Ejecuta el pipeline completo.
-    Ahora recibe los FILTROS como argumentos para que el caché funcione correctamente.
+    Ahora solo recibe los FILTROS como argumentos.
     """
     
-    # --- 1. Filtrar datos (DENTRO del caché) ---
-    # Si las tuplas de filtros están vacías, no hacer nada
+    # --- 1. Cargar datos (DENTRO del caché) ---
+    # Esto es instantáneo porque cargar_datos() también está cacheado
+    _df_completo = cargar_datos(NOMBRE_ARCHIVO_DATOS) # <--- AÑADE ESTA LÍNEA
+    if _df_completo is None:
+        st.error("Error fatal: No se pudieron cargar los datos dentro del pipeline.")
+        return pd.DataFrame(), pd.DataFrame(), None
+
+    # --- 2. Filtrar datos (DENTRO del caché) ---
     if not _productos_sel or not _clientes_sel:
         st.warning("Advertencia: No hay productos o clientes seleccionados.")
         return pd.DataFrame(), pd.DataFrame(), None # Devolver DFs vacíos y ts_full=None
@@ -499,6 +505,7 @@ if df is not None:
 else:
 
     st.info("Cargando datos... Si el error persiste, revisa el nombre del archivo.")
+
 
 
 
