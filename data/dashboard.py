@@ -355,18 +355,48 @@ if df is not None:
     
     api_key = st.sidebar.text_input("🔑 API Key de Google Gemini", type="password", help="Necesaria para el análisis de IA")
     
-    # Filtros de Producto y Cliente
-    productos_unicos = [st.sidebar.checkbox("Seleccionar Todos los Productos", value=True)] + df[COLUMNA_PRODUCTO].unique().tolist()
-    if productos_unicos[0]: # Si "Todos" está marcado
-        productos_seleccionados = df[COLUMNA_PRODUCTO].unique().tolist()
+    # --- Filtros de Producto y Cliente (LÓGICA CORREGIDA) ---
+    
+    # 1. Filtros de Producto
+    productos_lista = df[COLUMNA_PRODUCTO].unique().tolist()
+    # Usamos value=True para que el estado inicial sea "Todos"
+    todos_productos = st.sidebar.checkbox("Seleccionar Todos los Productos", value=True)
+    
+    if todos_productos:
+        # Si "Todos" está marcado, mostramos el multiselect bloqueado y con todo seleccionado
+        productos_seleccionados = st.sidebar.multiselect(
+            "Selecciona Productos:", 
+            options=productos_lista,
+            default=productos_lista,  # Selecciona todos por defecto
+            disabled=True             # Bloquea el widget
+        )
     else:
-        productos_seleccionados = st.sidebar.multiselect("Selecciona Productos:", df[COLUMNA_PRODUCTO].unique())
+        # Si "Todos" NO está marcado, el usuario puede elegir
+        productos_seleccionados = st.sidebar.multiselect(
+            "Selecciona Productos:", 
+            options=productos_lista,
+            default=None,             # Sin selección por defecto
+            disabled=False            # Habilita el widget
+        )
 
-    clientes_unicos = [st.sidebar.checkbox("Seleccionar Todos los Clientes", value=True)] + df[COLUMNA_CLIENTE].unique().tolist()
-    if clientes_unicos[0]:
-        clientes_seleccionados = df[COLUMNA_CLIENTE].unique().tolist()
+    # 2. Filtros de Cliente
+    clientes_lista = df[COLUMNA_CLIENTE].unique().tolist()
+    todos_clientes = st.sidebar.checkbox("Seleccionar Todos los Clientes", value=True)
+    
+    if todos_clientes:
+        clientes_seleccionados = st.sidebar.multiselect(
+            "Selecciona Clientes:",
+            options=clientes_lista,
+            default=clientes_lista,
+            disabled=True
+        )
     else:
-        clientes_seleccionados = st.sidebar.multiselect("Selecciona Clientes:", df[COLUMNA_CLIENTE].unique())
+        clientes_seleccionados = st.sidebar.multiselect(
+            "Selecciona Clientes:",
+            options=clientes_lista,
+            default=None,
+            disabled=False
+        )
     
     # Filtros de Métrica y Horizonte
     metrica_seleccionada = st.sidebar.selectbox("Selecciona la Métrica a Predecir:", METRICAS_PREDICCION)
@@ -454,6 +484,7 @@ if df is not None:
 else:
 
     st.info("Cargando datos... Si el error persiste, revisa el nombre del archivo.")
+
 
 
 
