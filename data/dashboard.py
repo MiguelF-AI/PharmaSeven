@@ -25,7 +25,7 @@ def load_css(file_name):
 st.set_page_config(layout="wide", page_title="Dashboard de Predicción de Ventas")
 warnings.filterwarnings('ignore')
 
-load_css('style.css')
+load_css('data/style.css')
 
 # --- Constantes y Nombres ---
 # ¡ASEGÚRATE DE QUE ESTA RUTA SEA CORRECTA EN GITHUB!
@@ -506,6 +506,7 @@ if df is not None:
                             st.caption("Valores más bajos son mejores.")
 else:
     st.info("Cargando datos... Si el error persiste, revisa el nombre/ruta del archivo.")
+
 
 
 
