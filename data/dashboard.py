@@ -168,7 +168,7 @@ def model_prophet(ts_data, n_steps):
 def get_gemini_analysis(metrics_summary, n_meses, metrica_nombre):
     """Llama a la API de Gemini para analizar los resultados."""
     if not api_key:
-        return "Por favor, introduce una API Key de Gemini en la barra lateral para obtener el análisis."
+        return "Error: No se encontró la API Key. Asegúrate de que esté configurada en los 'Secrets' de Streamlit."
     
     try:
         genai.configure(api_key=api_key)
@@ -209,7 +209,8 @@ if df is not None:
     # --- Barra Lateral (Filtros) ---
     st.sidebar.header("⚙️ Configuración de la Predicción")
     
-    api_key = st.sidebar.text_input("🔑 API Key de Google Gemini", type="password")
+    # Lee la API Key desde los "Secrets" de Streamlit
+    api_key = st.secrets.get("GEMINI_API_KEY")
     
     # --- Lógica de Filtros Simple (¡SIN CACHÉ!) ---
     # Esta lógica es simple. Streamlit recuerda la selección del
@@ -241,7 +242,8 @@ if df is not None:
         if not productos_seleccionados or not clientes_seleccionados:
             st.warning("Por favor, selecciona al menos un producto y un cliente.")
         elif not api_key:
-            st.error("Por favor, introduce tu API Key de Gemini en la barra lateral.")
+            st.error("Error: No se encontró la 'GEMINI_API_KEY'.")
+            st.error("Por favor, agrégala en 'Settings > Secrets' en Streamlit Cloud y reinicia la app.")
         else:
             # ¡SIN CACHÉ! Esto se ejecuta siempre
             with st.spinner(f"Ejecutando predicción para {n_meses_prediccion} meses... Esto puede tardar unos minutos..."):
@@ -420,6 +422,7 @@ if df is not None:
                             st.caption("Valores más bajos son mejores.")
 else:
     st.info("Cargando datos... Si el error persiste, revisa el nombre/ruta del archivo.")
+
 
 
 
