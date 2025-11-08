@@ -11,9 +11,21 @@ import time
 import warnings
 import lightgbm as lgb
 
+# --- FUNCIÓN PARA CARGAR CSS ---
+def load_css(file_name):
+    """Función para leer y cargar un archivo CSS local."""
+    try:
+        with open(file_name) as f:
+            st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+    except FileNotFoundError:
+        st.error(f"Error: No se encontró el archivo CSS '{file_name}'.")
+        st.error("Asegúrate de que esté en la misma carpeta que 'dashboard.py'.")
+
 # --- Configuración de la Página y Advertencias ---
 st.set_page_config(layout="wide", page_title="Dashboard de Predicción de Ventas")
 warnings.filterwarnings('ignore')
+
+load_css('style.css')
 
 # --- Constantes y Nombres ---
 # ¡ASEGÚRATE DE QUE ESTA RUTA SEA CORRECTA EN GITHUB!
@@ -494,6 +506,7 @@ if df is not None:
                             st.caption("Valores más bajos son mejores.")
 else:
     st.info("Cargando datos... Si el error persiste, revisa el nombre/ruta del archivo.")
+
 
 
 
