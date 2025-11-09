@@ -1,10 +1,23 @@
+/* --- ================================== --- */
+/* --- ARCHIVO DE ESTILOS (VERSIÓN "TARJETA") --- */
+/* --- ================================== --- */
+
 /* --- 1. CONFIGURACIÓN GENERAL --- */
 body {
-    background-color: #f0f2f6; /* Color de fondo gris claro para la app */
+    background-color: #f0f2f6; /* Fondo gris MUY claro */
+}
+
+/* Ocultar el footer "Made with Streamlit" */
+footer {
+    visibility: hidden;
+}
+div[data-testid="stToolbar"] {
+    visibility: hidden;
 }
 
 /* Contenedor principal donde viven los gráficos y tablas */
 .main .block-container {
+    background-color: #f0f2f6; /* Fondo gris, para que las tarjetas resalten */
     padding-top: 2rem;
     padding-bottom: 2rem;
     padding-left: 3rem;
@@ -15,117 +28,100 @@ body {
 [data-testid="stSidebar"] {
     background-color: #ffffff; /* Fondo blanco limpio */
     border-right: 1px solid #e6e6e6;
-    box-shadow: 2px 0px 10px rgba(0,0,0,0.05); /* Sombra sutil */
+    box-shadow: 2px 0px 10px rgba(0,0,0,0.05);
 }
 
-/* Título de la barra lateral */
 [data-testid="stSidebar"] h1,
 [data-testid="stSidebar"] h2,
 [data-testid="stSidebar"] h3 {
-    color: #0068c9; /* Color azul primario */
+    color: #0068c9;
 }
-
-/* Etiquetas de los widgets (filtros) */
 [data-testid="stSidebar"] label {
     font-weight: 500;
-    color: #333333;
 }
 
 /* --- 3. BOTÓN PRINCIPAL "GENERAR PREDICCIÓN" --- */
 .stButton>button[kind="primary"] {
-    background-color: #0068c9; /* Azul primario */
+    background-color: #0068c9;
     color: white;
     border: none;
     border-radius: 5px;
     padding: 0.75rem 1.5rem;
     font-weight: bold;
-    transition: all 0.3s ease; /* Transición suave */
-    width: 100%; /* Ocupa todo el ancho de la barra */
+    transition: all 0.3s ease;
+    width: 100%;
 }
-
 .stButton>button[kind="primary"]:hover {
-    background-color: #004a91; /* Azul más oscuro al pasar el mouse */
+    background-color: #004a91;
     box-shadow: 0px 4px 12px rgba(0,0,0,0.1);
-    transform: translateY(-2px); /* Efecto de "levantar" */
+    transform: translateY(-2px);
 }
 
 /* --- 4. TÍTULOS Y TEXTO EN EL ÁREA PRINCIPAL --- */
 h1 {
     color: #1a1a1a;
     text-align: center;
+    padding-bottom: 1rem;
 }
-
-/* Subtítulos (ej. "Análisis de Gemini", "Gráfico de Comparación") */
 h2, [data-testid="stSubheader"] {
     color: #0068c9;
     border-bottom: 2px solid #e0e0e0;
     padding-bottom: 8px;
-    font-weight: 600;
+    margin-top: 2rem; /* Añadir espacio sobre los subtítulos */
+    margin-bottom: 1.5rem;
 }
 
-/* --- 5. WIDGETS (SLIDER, SELECTBOX) --- */
+/* --- 5. "TARJETAS" (EL LOOK MODERNO) --- */
+/* Hacemos que los contenedores de gráficos, tablas y métricas parezcan "tarjetas" */
 
-/* Cambia el color del slider */
-div[data-testid="stSlider"] > div[role="slider"] {
-    background-color: #0068c9;
+[data-testid="stPlotlyChart"],
+.stDataFrame,
+[data-testid="stMetric"],
+[data-testid="stMarkdownContainer"] {
+    background-color: #ffffff;
+    border: 1px solid #e6e6e6;
+    border-radius: 10px;
+    padding: 1.5rem; /* Espacio interno en la tarjeta */
+    box-shadow: 0px 6px 15px rgba(0,0,0,0.06); /* Sombra más pronunciada */
+    margin-bottom: 1.5rem; /* Espacio entre tarjetas */
 }
 
-/* Cajas de selección */
-div[data-testid="stSelectbox"] > div,
-div[data-testid="stMultiSelect"] > div {
-    border-radius: 5px;
-    border: 1px solid #cccccc;
-    box-shadow: 0px 2px 4px rgba(0,0,0,0.05);
-}
-
-/* --- 6. DATOS (TABLAS Y MÉTRICAS) --- */
-
-/* Estilo para las tablas de st.dataframe */
+/* La tabla (DataFrame) necesita un trato especial */
 .stDataFrame {
-    border-radius: 8px;
-    overflow: hidden; /* Necesario para que el border-radius afecte a la tabla */
-    box-shadow: 0px 4px 12px rgba(0,0,0,0.05);
+    padding: 0; /* Quitamos el padding para que la tabla llene la tarjeta */
+    overflow: hidden; /* Importante para el border-radius */
 }
-
-/* Encabezado de la tabla */
 .stDataFrame thead {
     background-color: #0068c9;
     color: white;
 }
-
 .stDataFrame thead th {
     font-weight: bold;
     font-size: 1rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
 }
-
-/* Filas de la tabla (rayado tipo cebra) */
 .stDataFrame tbody tr:nth-child(even) {
-    background-color: #f8f9fa; /* Gris muy claro para filas pares */
+    background-color: #f8f9fa;
 }
 .stDataFrame tbody tr:hover {
-    background-color: #e6f7ff; /* Azul pálido al pasar el mouse */
+    background-color: #e6f7ff;
 }
 
-/* Cajas de métricas (RMSE, MAPE) */
+/* Las métricas (RMSE/MAPE) */
 [data-testid="stMetric"] {
-    background-color: #ffffff;
-    border: 1px solid #e6e6e6;
-    border-radius: 8px;
-    padding: 1.5rem;
-    box-shadow: 0px 4px 12px rgba(0,0,0,0.05);
+    text-align: center;
 }
-
-/* Etiqueta de la métrica (ej. "RMSE") */
 [data-testid="stMetricLabel"] {
     color: #555555;
     font-weight: 500;
 }
-
-/* Valor de la métrica */
 [data-testid="stMetricValue"] {
     color: #0068c9;
     font-size: 2.25rem;
     font-weight: bold;
+}
+
+/* El análisis de Gemini */
+[data-testid="stMarkdownContainer"] [data-testid="stMarkdownBody"] {
+    padding: 0; /* Quitar padding extra */
 }
