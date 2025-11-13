@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-from sklearn.metrics import mean_squared_error, mean_absolute_percentage_error
+from sklearn.metrics import mean_squared_error, mean_absolute_percentage_error, mean_absolute_error, r2_score
 from statsmodels.tsa.holtwinters import SimpleExpSmoothing, ExponentialSmoothing
 from pmdarima import auto_arima
 from prophet import Prophet
@@ -79,10 +79,40 @@ def crear_features(df, target_col):
 # --- Funciones de Métricas ---
 
 def calcular_metricas(y_true, y_pred):
-    """Calcula RMSE y MAPE para un modelo."""
+    """
+    Calcula métricas completas para evaluación de modelos.
+    
+    - RMSE: Penaliza mucho los errores grandes (picos).
+    - MAPE: Error porcentual (cuidado con los ceros).
+    - MAE: El error promedio en unidades reales (muy interpretable).
+    - R2: Qué tan bien se ajusta el modelo (1.0 es perfecto, negativo es pésimo).
+    """
+    
+    # 1. RMSE (Ya lo tenías)
     rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-    mape = mean_absolute_percentage_error(y_true[y_true != 0], y_pred[y_true != 0])
-    return {'RMSE': rmse, 'MAPE': mape}
+    
+    # 2. MAPE (Con protección para ceros)
+    # Solo calculamos MAPE donde el valor real NO es 0 para evitar divisiones por infinito
+    mask = y_true != 0
+    if mask.sum() > 0:
+        mape = mean_absolute_percentage_error(y_true[mask], y_pred[mask])
+    else:
+        mape = np.nan # O 0.0 si prefieres
+
+    # 3. MAE (Error Absoluto Medio) - ¡NUEVA!
+    # Es más noble que el RMSE, no se asusta tanto con outliers.
+    mae = mean_absolute_error(y_true, y_pred)
+
+    # 4. R2 Score - ¡NUEVA!
+    # Nos dice qué porcentaje de la varianza explica el modelo.
+    r2 = r2_score(y_true, y_pred)
+
+    return {
+        'RMSE': rmse, 
+        'MAPE': mape, 
+        'MAE': mae, 
+        'R2': r2
+    }
 
 # --- Funciones de Modelos ---
 
@@ -507,13 +537,3 @@ if df is not None:
                             st.caption("Valores más bajos son mejores.")
 else:
     st.info("Cargando datos... Si el error persiste, revisa el nombre/ruta del archivo.")
-
-
-
-
-
-
-
-
-
-
