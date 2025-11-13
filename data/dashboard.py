@@ -237,36 +237,49 @@ def model_lightgbm(ts_data, n_steps):
 # --- Función de Gemini AI ---
 
 def get_gemini_analysis(metrics_summary, n_meses, metrica_nombre):
-    """Llama a la API de Gemini para analizar los resultados."""
+    """Llama a la API de Gemini con reintentos automáticos (Backoff)."""
     if not api_key:
-        return "Error: No se encontró la API Key. Asegúrate de que esté configurada en los 'Secrets' de Streamlit."
+        return "Error: No se encontró la API Key."
     
-    try:
-        genai.configure(api_key=api_key)
-        # Usamos el modelo más rápido y moderno
-        model = genai.GenerativeModel('gemini-2.0-flash')
-        
-        prompt = f"""
-        Eres un analista de datos senior especializado en pronósticos de ventas.
-        Quiero predecir '{metrica_nombre}' para los próximos {n_meses} meses.
-        
-        He corrido 3 modelos (SARIMA, Prophet, Holt-Winters) y he calculado sus métricas de error (RMSE y MAPE) en un conjunto de prueba. 
-        Un valor más bajo es mejor para ambas métricas.
+    # Configuración inicial
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel('gemini-2.0-flash')
+    
+    prompt = f"""
+    Eres un analista de datos experto. Predicción para: '{metrica_nombre}' ({n_meses} meses).
+    
+    Resultados de métricas (RMSE y MAPE, menor es mejor):
+    {metrics_summary.to_string()}
 
-        Estos son los resultados:
-        {metrics_summary.to_string()}
+    Responde brevemente en markdown:
+    1. **Mejor Modelo:** Cuál elegir y por qué (basado en MAPE).
+    2. **Análisis:** Por qué funcionó mejor que los otros.
+    """
 
-        Por favor, responde con lo siguiente en un formato markdown claro:
-        
-        1.  **Recomendación del Modelo:** ¿Cuál es el modelo más eficiente y por qué? (Prioriza MAPE).
-        2.  **Análisis de Resultados:** Explica brevemente por qué este modelo pudo haber ganado (ej. "SARIMA/Prophet capturó bien la estacionalidad...") y por qué otros pudieron fallar.
-        """
-        
-        response = model.generate_content(prompt)
-        return response.text
-    except Exception as e:
-        st.error(f"Error al contactar la API de Gemini: {e}")
-        return "No se pudo generar el análisis. Verifica tu API Key o el nombre del modelo."
+    # --- Lógica de Reintento (Retry Logic) ---
+    max_retries = 3
+    wait_time = 2 # Segundos iniciales de espera
+
+    for attempt in range(max_retries):
+        try:
+            # Intentamos llamar a la API
+            response = model.generate_content(prompt)
+            return response.text
+            
+        except Exception as e:
+            error_msg = str(e)
+            # Si el error es 429 (Resource exhausted), esperamos y reintentamos
+            if "429" in error_msg or "Resource exhausted" in error_msg:
+                if attempt < max_retries - 1: # Si no es el último intento
+                    time.sleep(wait_time)
+                    wait_time *= 2 # Duplicamos el tiempo de espera (2s -> 4s -> 8s)
+                    continue # Volvemos al inicio del loop
+                else:
+                    return "⚠️ La API de Gemini está saturada en este momento. Intenta en 1 minuto."
+            else:
+                # Si es otro error (ej. API Key inválida), fallamos inmediatamente
+                st.error(f"Error de Gemini: {e}")
+                return "Error al procesar la solicitud."
 
 # --- == APLICACIÓN PRINCIPAL (STREAMLIT) == ---
 
@@ -494,6 +507,7 @@ if df is not None:
                             st.caption("Valores más bajos son mejores.")
 else:
     st.info("Cargando datos... Si el error persiste, revisa el nombre/ruta del archivo.")
+
 
 
 
