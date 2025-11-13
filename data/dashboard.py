@@ -19,10 +19,7 @@ COL_PRODUCTO = 'Producto - Descripción'
 COL_CLIENTE = 'Cliente - Descripción'
 COL_FECHA = 'Fecha'
 METRICAS = ['Pedido_piezas', 'Pedido_MXN', 'Factura_piezas', 'Factura_MXN']
-# Métricas clave para los KPIs (puedes cambiarlas)
-METRICA_KPI_1 = 'Factura_MXN'
-METRICA_KPI_2 = 'Factura_piezas'
-
+# --- Eliminadas métricas KPI fijas ---
 
 # --- Funciones de Carga de Datos (Cacheada) ---
 @st.cache_data
@@ -129,39 +126,48 @@ st.divider()
 if not productos_seleccionados or not clientes_seleccionados:
     st.warning("Por favor, selecciona al menos un producto y un cliente.")
 else:
-    # 1. Filtrar el DataFrame HISTÓRICO para los KPIs y gráficos de desglose
+    # 1. Filtrar AMBOS dataframes primero
     df_hist_filtrado = df_hist[
         (df_hist[COL_PRODUCTO].isin(productos_seleccionados)) &
         (df_hist[COL_CLIENTE].isin(clientes_seleccionados))
     ]
     
+    df_pred_filtrado = df_pred[
+        (df_pred[COL_PRODUCTO].isin(productos_seleccionados)) &
+        (df_pred[COL_CLIENTE].isin(clientes_seleccionados)) &
+        (df_pred['Modelo'] == modelo_seleccionado)
+    ]
+
+    # 2. Variable de formato (para MXN o piezas)
+    is_mxn = "MXN" in metrica_seleccionada
+
+    # 3. SECCIÓN HISTÓRICA (KPIs y Gráficos)
+    # Solo se muestra si hay datos históricos
     if df_hist_filtrado.empty:
         st.warning("No se encontraron datos históricos para la selección actual.")
     else:
-        # --- NUEVA SECCIÓN: KPIs (Idea 1) ---
         st.subheader("Resumen de Datos Históricos (Selección Actual)")
         
-        # Calcular KPIs
-        kpi_factura_mxn = df_hist_filtrado[METRICA_KPI_1].sum()
-        kpi_pedido_piezas = df_hist_filtrado[METRICA_KPI_2].sum()
-        
-        # Usamos la 'metrica_seleccionada' para los Tops
+        # Calcular KPIs Históricos (dinámicos)
         top_producto_serie = df_hist_filtrado.groupby(COL_PRODUCTO)[metrica_seleccionada].sum()
         top_cliente_serie = df_hist_filtrado.groupby(COL_CLIENTE)[metrica_seleccionada].sum()
-
+        
+        kpi_hist_total = top_producto_serie.sum()
         kpi_top_producto = top_producto_serie.idxmax() if not top_producto_serie.empty else "N/A"
         kpi_top_cliente = top_cliente_serie.idxmax() if not top_cliente_serie.empty else "N/A"
+        
+        # Formato dinámico para el KPI
+        kpi_hist_total_str = f"${kpi_hist_total:,.0f}" if is_mxn else f"{kpi_hist_total:,.0f} pz"
 
-        # Mostrar KPIs en columnas
-        kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4)
-        kpi_col1.metric(f"Total {METRICA_KPI_1} (Histórico)", f"${kpi_factura_mxn:,.0f}")
-        kpi_col2.metric(f"Total {METRICA_KPI_2} (Histórico)", f"{kpi_pedido_piezas:,.0f} pz")
-        kpi_col3.metric(f"Producto Principal (por {metrica_seleccionada})", kpi_top_producto)
-        kpi_col4.metric(f"Cliente Principal (por {metrica_seleccionada})", kpi_top_cliente)
+        # Mostrar KPIs Históricos (3 columnas)
+        kpi_col1, kpi_col2, kpi_col3 = st.columns(3)
+        kpi_col1.metric(f"Total Histórico ({metrica_seleccionada})", kpi_hist_total_str)
+        kpi_col2.metric(f"Producto Principal", kpi_top_producto)
+        kpi_col3.metric(f"Cliente Principal", kpi_top_cliente)
 
         st.divider()
 
-        # --- NUEVA SECCIÓN: Gráficos de Desglose (Idea 2) ---
+        # --- Gráficos de Desglose Histórico ---
         st.subheader(f"Desglose Histórico por '{metrica_seleccionada}'")
         
         g_col1, g_col2 = st.columns(2)
@@ -196,41 +202,60 @@ else:
 
         st.divider()
 
-    # 2. Filtrar el DataFrame de PREDICCIÓN (para el gráfico de serie de tiempo)
-    df_pred_filtrado = df_pred[
-        (df_pred[COL_PRODUCTO].isin(productos_seleccionados)) &
-        (df_pred[COL_CLIENTE].isin(clientes_seleccionados)) &
-        (df_pred['Modelo'] == modelo_seleccionado)
-    ]
-    
-    if df_hist_filtrado.empty or df_pred_filtrado.empty:
-        st.warning("No se encontraron datos históricos o predicciones para la selección actual.")
+    # 4. SECCIÓN DE PREDICCIÓN (KPIs, Gráfico TS, Tabla)
+    # Solo se muestra si hay datos de predicción
+    if df_pred_filtrado.empty:
+        st.warning(f"No se encontraron datos de predicción para el modelo '{modelo_seleccionado}' con los filtros actuales.")
     else:
-        # 3. Preparar datos para el gráfico de Serie de Tiempo
-        ts_hist_sum = df_hist_filtrado.groupby(COL_FECHA)[metrica_seleccionada].sum()
+        # --- NUEVA SECCIÓN: KPIs de PREDICCIÓN (dinámicos al modelo) ---
+        st.subheader(f"Resumen de Predicción ({modelo_seleccionado})")
+        
+        # Calcular KPIs de Predicción
         ts_pred_sum = df_pred_filtrado.groupby(COL_FECHA)[metrica_seleccionada].sum()
-
-        # 4. Crear el Gráfico de Serie de Tiempo (el que ya tenías)
-        st.subheader(f"Gráfico de Predicción ({modelo_seleccionado}) - {metrica_seleccionada}")
-        fig_ts = go.Figure()
-
-        # Histórico
-        fig_ts.add_trace(go.Scatter(
-            x=ts_hist_sum.index, y=ts_hist_sum.values,
-            mode='lines+markers', name='Datos Históricos (Total)'
-        ))
         
-        # Predicción
-        fig_ts.add_trace(go.Scatter(
-            x=ts_pred_sum.index, y=ts_pred_sum.values,
-            mode='lines', name=f'Predicción ({modelo_seleccionado})',
-            line=dict(color='red', width=3, dash='dash')
-        ))
+        kpi_pred_total = ts_pred_sum.sum()
+        kpi_pred_avg = ts_pred_sum.mean()
+        kpi_pred_meses = ts_pred_sum.count()
         
-        fig_ts.update_layout(xaxis_title="Fecha", yaxis_title=metrica_seleccionada, legend_title="Series")
-        st.plotly_chart(fig_ts, use_container_width=True)
+        kpi_pred_total_str = f"${kpi_pred_total:,.0f}" if is_mxn else f"{kpi_pred_total:,.0f} pz"
+        kpi_pred_avg_str = f"${kpi_pred_avg:,.0f}" if is_mxn else f"{kpi_pred_avg:,.0f} pz"
+        
+        # Mostrar KPIs de Predicción
+        pkpi_col1, pkpi_col2, pkpi_col3 = st.columns(3)
+        pkpi_col1.metric(f"Total Pronosticado ({metrica_seleccionada})", kpi_pred_total_str)
+        pkpi_col2.metric("Promedio Mensual Pronosticado", kpi_pred_avg_str)
+        pkpi_col3.metric("Meses Pronosticados", f"{kpi_pred_meses} meses")
+        
+        st.divider()
 
-        # 5. Crear la Tabla (la que ya tenías)
+        # --- Gráfico de Serie de Tiempo (requiere histórico) ---
+        if not df_hist_filtrado.empty:
+            # Preparar datos históricos para el gráfico
+            ts_hist_sum = df_hist_filtrado.groupby(COL_FECHA)[metrica_seleccionada].sum()
+            
+            st.subheader(f"Gráfico de Predicción ({modelo_seleccionado}) - {metrica_seleccionada}")
+            fig_ts = go.Figure()
+
+            # Histórico
+            fig_ts.add_trace(go.Scatter(
+                x=ts_hist_sum.index, y=ts_hist_sum.values,
+                mode='lines+markers', name='Datos Históricos (Total)'
+            ))
+            
+            # Predicción (ya calculada como ts_pred_sum)
+            fig_ts.add_trace(go.Scatter(
+                x=ts_pred_sum.index, y=ts_pred_sum.values,
+                mode='lines', name=f'Predicción ({modelo_seleccionado})',
+                line=dict(color='red', width=3, dash='dash')
+            ))
+            
+            fig_ts.update_layout(xaxis_title="Fecha", yaxis_title=metrica_seleccionada, legend_title="Series")
+            st.plotly_chart(fig_ts, use_container_width=True)
+        else:
+            st.warning("No se puede mostrar el gráfico de serie de tiempo porque faltan datos históricos para comparar.")
+
+
+        # --- Tabla de Predicción (Desglosada) ---
         st.subheader(f"Tabla de Predicciones Desglosada ({modelo_seleccionado})")
         
         columnas_tabla = [COL_PRODUCTO, COL_CLIENTE, COL_FECHA, metrica_seleccionada]
