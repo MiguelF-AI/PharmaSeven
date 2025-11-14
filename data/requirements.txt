@@ -9,3 +9,5 @@ prophet
 google-generativeai
 lightgbm
 
+setuptools
+wheel
