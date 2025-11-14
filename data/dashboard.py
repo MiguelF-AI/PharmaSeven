@@ -387,6 +387,11 @@ if df is not None:
                     (df[COLUMNA_CLIENTE].isin(clientes_seleccionados))
                 ]
                 
+                # --- ¡FILTRO DE FECHA NUEVO! ---
+                # Ajusta esta fecha al inicio del 'Régimen 3' (la nueva estabilidad)
+                FECHA_INICIO_NUEVA = '2023-01-01' 
+                df_filtrado = df_filtrado[df_filtrado[COLUMNA_FECHA] >= FECHA_INICIO_NUEVA]
+                
                 ts_full = preparar_series_de_tiempo(df_filtrado, metrica_seleccionada)
                 
                 if ts_full is not None:
@@ -565,6 +570,7 @@ if df is not None:
                                 st.caption("Valores más bajos son mejores.")
 else:
     st.info("Cargando datos... Si el error persiste, revisa el nombre/ruta del archivo.")
+
 
 
 
