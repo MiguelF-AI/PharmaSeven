@@ -103,15 +103,10 @@ def calcular_metricas(y_true, y_pred):
     # Es más noble que el RMSE, no se asusta tanto con outliers.
     mae = mean_absolute_error(y_true, y_pred)
 
-    # 4. R2 Score - ¡NUEVA!
-    # Nos dice qué porcentaje de la varianza explica el modelo.
-    r2 = r2_score(y_true, y_pred)
-
     return {
         'RMSE': rmse, 
         'MAPE': mape, 
-        'MAE': mae, 
-        'R2': r2
+        'MAE': mae
     }
 
 # --- Funciones de Modelos ---
@@ -387,11 +382,6 @@ if df is not None:
                     (df[COLUMNA_CLIENTE].isin(clientes_seleccionados))
                 ]
                 
-                # --- ¡FILTRO DE FECHA NUEVO! ---
-                # Ajusta esta fecha al inicio del 'Régimen 3' (la nueva estabilidad)
-                FECHA_INICIO_NUEVA = '2023-01-01' 
-                df_filtrado = df_filtrado[df_filtrado[COLUMNA_FECHA] >= FECHA_INICIO_NUEVA]
-                
                 ts_full = preparar_series_de_tiempo(df_filtrado, metrica_seleccionada)
                 
                 if ts_full is not None:
@@ -399,8 +389,8 @@ if df is not None:
                         # --- 2. División Train/Test (en ESCALA REAL) ---
                             # ¡Creamos la división en escala real PRIMERO para los gráficos!
                             split_point = int(len(ts_full) * 0.8)
-                            ts_train = ts_full.iloc[:split_point]  # <--- ¡ESTA ES LA VARIABLE QUE FALTABA!
-                            ts_test = ts_full.iloc[split_point:]   # <--- ¡Y ESTA!
+                            ts_train = ts_full.iloc[:split_point]  
+                            ts_test = ts_full.iloc[split_point:]   
 
                             # --- ¡TRANSFORMACIÓN LOGARÍTMICA AQUÍ! ---
                             # Ahora transformamos TODO
@@ -570,6 +560,7 @@ if df is not None:
                                 st.caption("Valores más bajos son mejores.")
 else:
     st.info("Cargando datos... Si el error persiste, revisa el nombre/ruta del archivo.")
+
 
 
 
