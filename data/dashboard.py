@@ -116,30 +116,49 @@ def calcular_metricas(y_true, y_pred):
 
 # --- Funciones de Modelos ---
 
-def run_model(model_name, model_func, ts_train, ts_test, ts_full, n_forecast):
+def run_model(model_name, model_func, ts_train_log, ts_test_log, ts_full_log, n_forecast):
     """
-    Función genérica para correr un modelo.
-    Ahora devuelve la predicción Y el intervalo de confianza.
+    Ejecuta el modelo usando datos logarítmicos, pero revierte la transformación
+    para calcular métricas y entregar resultados en la escala real.
     """
     start_time = time.time()
     
-    # 1. Entrenar en 'train' y predecir en 'test' para métricas
-    # No necesitamos el intervalo para el test, así que tomamos el primer valor [0]
-    pred_test, _ = model_func(ts_train, len(ts_test)) 
-    metrics = calcular_metricas(ts_test, pred_test)
+    # --- A. FASE DE PRUEBA (Train/Test) ---
+    # 1. Entrenar con datos LOG y predecir LOG
+    # Nota: Pasamos len(ts_test_log) para que sepa cuántos pasos predecir
+    pred_test_log, _ = model_func(ts_train_log, len(ts_test_log))
     
-    # 2. Entrenar en 'full' y predecir el futuro
-    pred_future, conf_int = model_func(ts_full, n_forecast)
+    # 2. Revertir transformación (Log -> Real)
+    pred_test_real = np.expm1(pred_test_log)
+    actual_test_real = np.expm1(ts_test_log) # Revertimos también los datos reales de prueba
+    
+    # 3. Corrección de Negativos (Clipping)
+    pred_test_real = pred_test_real.clip(lower=0)
+    
+    # 4. Calcular métricas en la escala REAL (Importante para que el RMSE tenga sentido)
+    metrics = calcular_metricas(actual_test_real, pred_test_real)
+    
+    # --- B. FASE DE FUTURO (Full Data) ---
+    # 1. Entrenar con TODOS los datos LOG
+    pred_future_log, conf_int_log = model_func(ts_full_log, n_forecast)
+    
+    # 2. Revertir predicción futura
+    pred_future_real = np.expm1(pred_future_log).clip(lower=0)
+    
+    # 3. Revertir intervalos de confianza (si existen)
+    conf_int_real = None
+    if conf_int_log is not None:
+        conf_int_real = np.expm1(conf_int_log).clip(lower=0)
     
     end_time = time.time()
-    st.write(f"Modelo '{model_name}' completado en {end_time - start_time:.2f}s")
+    # st.write(f"Modelo '{model_name}' completado en {end_time - start_time:.2f}s") # Opcional: comentar para limpiar UI
     
     return {
         'name': model_name,
         'metrics': metrics,
-        'forecast': pred_future,
-        'interval': conf_int,  # <-- ¡NUEVO!
-        'test_prediction': pred_test
+        'forecast': pred_future_real,
+        'interval': conf_int_real,
+        'test_prediction': pred_test_real
     }
 
 # --- Modelos Potentes (No planos) ---
@@ -371,46 +390,38 @@ if df is not None:
                 ts_full = preparar_series_de_tiempo(df_filtrado, metrica_seleccionada)
                 
                 if ts_full is not None:
-                    
-                    # --- 2. División Train/Test (se hace siempre) ---
-                    # A. División FIJA 80/20 para métricas y gráfico de evaluación
-                    split_point = int(len(ts_full) * 0.8)
-                    ts_train = ts_full.iloc[:split_point]
-                    ts_test = ts_full.iloc[split_point:]
+                        
+                        # --- ¡TRANSFORMACIÓN LOGARÍTMICA AQUÍ! ---
+                        # Usamos log1p (logaritmo de x+1) para manejar ceros sin errores
+                        ts_full_log = np.log1p(ts_full)
 
-                    # B. El slider (n_meses_prediccion) es solo para el pronóstico FUTURO.
-                    #    (Ya lo tenemos en la variable n_meses_prediccion)
-                    
-                    # C. Validación (asegurarnos de que el 20% no sea muy pequeño)
-                    if len(ts_test) < 2 or len(ts_train) < 12:
-                        st.error(f"Error: No hay suficientes datos para una división 80/20 válida (Train: {len(ts_train)}, Test: {len(ts_test)}).")
-                        st.stop() # Detener la ejecución si no hay datos
-                    else:
-                        
-                        # --- 3. Ejecución de Modelos (se hace siempre) ---
-                        st.write("Entrenando modelos...")
-                        
-                        model_pipeline = [
-                            ('SARIMA', model_arima),
-                            ('Prophet', model_prophet),
-                            ('Holt-Winters', model_holt_winters),
-                            ('LightGBM', model_lightgbm)
-                        ]
-                        
-                        all_metrics = {}
-                        all_forecasts = {}
-                        all_intervals = {} # ¡NUEVO! Para guardar los intervalos
-                        all_test_preds = {}
-                        
-                        for name, func in model_pipeline:
-                            try:
-                                resultado = run_model(name, func, ts_train, ts_test, ts_full, n_meses_prediccion)
-                                all_metrics[name] = resultado['metrics']
-                                all_forecasts[name] = resultado['forecast']
-                                all_intervals[name] = resultado['interval']
-                                all_test_preds[name] = resultado['test_prediction'] # <--- ¡GUARDA EL RESULTADO!
-                            except Exception as e:
-                                st.error(f"Error al ejecutar el modelo '{name}': {e}")
+                        # --- 2. División Train/Test (Usando los datos LOG) ---
+                        split_point = int(len(ts_full_log) * 0.8)
+                        ts_train_log = ts_full_log.iloc[:split_point]
+                        ts_test_log = ts_full_log.iloc[split_point:]
+
+                        if len(ts_test_log) < 2 or len(ts_train_log) < 12:
+                            st.error(f"Error: No hay suficientes datos...")
+                            st.stop()
+                        else:
+                            # --- 3. Ejecución de Modelos ---
+                            st.write("Entrenando modelos con transformación Log-Normal...")
+                            
+                            # ... (definición de model_pipeline igual que antes) ...
+
+                            for name, func in model_pipeline:
+                                try:
+                                    # CAMBIO: Pasamos las versiones _log de los datos
+                                    resultado = run_model(name, func, ts_train_log, ts_test_log, ts_full_log, n_meses_prediccion)
+                                    
+                                    # El resto del código sigue igual, porque run_model ya devuelve
+                                    # los datos convertidos a la escala real en 'forecast' y 'metrics'
+                                    all_metrics[name] = resultado['metrics']
+                                    all_forecasts[name] = resultado['forecast']
+                                    all_intervals[name] = resultado['interval']
+                                    all_test_preds[name] = resultado['test_prediction']
+                                except Exception as e:
+                                    st.error(f"Error al ejecutar el modelo '{name}': {e}")
                         
                         if not all_metrics:
                             st.error("No se pudieron ejecutar los modelos. Revisa los datos o filtros.")
@@ -537,3 +548,4 @@ if df is not None:
                             st.caption("Valores más bajos son mejores.")
 else:
     st.info("Cargando datos... Si el error persiste, revisa el nombre/ruta del archivo.")
+
