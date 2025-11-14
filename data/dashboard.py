@@ -407,7 +407,19 @@ if df is not None:
                             # --- 3. Ejecución de Modelos ---
                             st.write("Entrenando modelos con transformación Log-Normal...")
                             
-                            # ... (definición de model_pipeline igual que antes) ...
+                            # --- ¡AQUÍ VA LA LÍNEA QUE FALTA! ---
+                            # Asegúrate de que esta definición esté presente
+                            model_pipeline = [
+                                ('SARIMA', model_arima),
+                                ('Prophet', model_prophet),
+                                ('Holt-Winters', model_holt_winters),
+                                ('LightGBM', model_lightgbm)
+                            ]
+                            # (Tu código para inicializar diccionarios ya está aquí)
+                            all_metrics = {}
+                            all_forecasts = {}
+                            all_intervals = {}
+                            all_test_preds = {}
 
                             for name, func in model_pipeline:
                                 try:
@@ -548,4 +560,5 @@ if df is not None:
                             st.caption("Valores más bajos son mejores.")
 else:
     st.info("Cargando datos... Si el error persiste, revisa el nombre/ruta del archivo.")
+
 
