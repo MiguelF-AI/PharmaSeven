@@ -54,7 +54,7 @@
                        target="_blank" 
                        rel="noopener noreferrer"
                        class="block w-full sm:w-auto px-8 py-4 rounded-lg font-semibold text-white bg-[#014888] hover:bg-[#0259a9] transition-all duration-300 shadow-lg hover:shadow-[#014888]/40 focus:outline-none focus:ring-2 focus:ring-[#014888] focus:ring-offset-2 focus:ring-offset-gray-900">
-                       Entrenar y Predecir
+                        Entrenar y Predecir
                     </a>
 
                     <!-- Botón 2: Predicciones Precalculadas -->
@@ -62,7 +62,7 @@
                        target="_blank" 
                        rel="noopener noreferrer"
                        class="block w-full sm:w-auto px-8 py-4 rounded-lg font-semibold text-white bg-[#de211b] hover:bg-[#f0322c] transition-all duration-300 shadow-lg hover:shadow-[#de211b]/40 focus:outline-none focus:ring-2 focus:ring-[#de211b] focus:ring-offset-2 focus:ring-offset-gray-900">
-                       Ver Precalculadas
+                        Ver Precalculadas
                     </a>
                 </div>
             </div>
@@ -136,14 +136,14 @@
                     <div class="flex-1 text-center p-6 bg-gray-800 rounded-2xl border border-gray-700 shadow-lg transform transition duration-300 hover:-translate-y-2">
                         <div class="text-5xl mb-4 font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-[#014888]">2</div>
                         <h3 class="text-xl font-semibold mb-2 text-white">Modelado Estadístico</h3>
-                        <p class="text-gray-400 text-sm">Aplicación de métodos cuantitativos (Series de Tiempo, Regresión) para encontrar patrones y estimar la demanda.</p>
+                        <p class="text-gray-400 text-sm">Aplicación de métodos cuantitativos para encontrar patrones y estimar la demanda.</p>
                     </div>
                     
                     <!-- Paso 3 -->
                     <div class="flex-1 text-center p-6 bg-gray-800 rounded-2xl border border-gray-700 shadow-lg transform transition duration-300 hover:-translate-y-2">
                         <div class="text-5xl mb-4 font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-[#014888]">3</div>
                         <h3 class="text-xl font-semibold mb-2 text-white">Validación y Métricas</h3>
-                        <p class="text-gray-400 text-sm">Evaluación de los modelos con métricas de exactitud (accuracy) para seleccionar el más asertivo.</p>
+                        <p class="text-gray-400 text-sm">Evaluación de los modelos con métricas de exactitud (RMSE, MAE, MAPE) para seleccionar el más asertivo.</p>
                     </div>
                     
                     <!-- Paso 4 -->
@@ -156,7 +156,79 @@
              </div>
         </section>
 
-        <!-- SECCIÓN 4: LLAMADO A LA ACCIÓN (CTA) -->
+        <!-- ====================================================== -->
+        <!-- SECCIÓN 4: HERRAMIENTAS Y TECNOLOGÍAS (¡NUEVA!) -->
+        <!-- ====================================================== -->
+        <section class="py-20 px-4 sm:px-8 bg-gray-900">
+            <div class="max-w-6xl mx-auto">
+                <h2 class="text-4xl font-bold text-center mb-16 text-white">
+                    Herramientas y <span class="text-cyan-400">Tecnologías</span>
+                </h2>
+                
+                <!-- Contenedor de la cuadrícula de herramientas -->
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+
+                    <!-- Tarjeta 1: Python -->
+                    <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg text-center transform transition duration-300 hover:-translate-y-2 hover:shadow-cyan-500/20">
+                        <div class="text-4xl font-bold text-cyan-400 mb-3">Py</div>
+                        <h3 class="text-xl font-semibold mb-2 text-white">Python</h3>
+                        <p class="text-gray-400 text-sm">Lenguaje principal para todo el análisis de datos y backend.</p>
+                    </div>
+
+                    <!-- Tarjeta 2: Streamlit -->
+                    <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg text-center transform transition duration-300 hover:-translate-y-2 hover:shadow-cyan-500/20">
+                        <div class="text-4xl font-bold text-cyan-400 mb-3">St</div>
+                        <h3 class="text-xl font-semibold mb-2 text-white">Streamlit</h3>
+                        <p class="text-gray-400 text-sm">Framework para construir y desplegar el dashboard interactivo.</p>
+                    </div>
+
+                    <!-- Tarjeta 3: Gemini API -->
+                    <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg text-center transform transition duration-300 hover:-translate-y-2 hover:shadow-cyan-500/20">
+                        <div class="text-4xl font-bold text-cyan-400 mb-3">AI</div>
+                        <h3 class="text-xl font-semibold mb-2 text-white">LLM Gemini</h3>
+                        <p class="text-gray-400 text-sm">IA de Google para el análisis de resultados y recomendaciones.</p>
+                    </div>
+
+                    <!-- Tarjeta 4: Statsmodels -->
+                    <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg text-center transform transition duration-300 hover:-translate-y-2 hover:shadow-cyan-500/20">
+                        <div class="text-4xl font-bold text-cyan-400 mb-3">H-W</div>
+                        <h3 class="text-xl font-semibold mb-2 text-white">Statsmodels</h3>
+                        <p class="text-gray-400 text-sm">Librería para modelos de series de tiempo (ARIMA, Holt-Winters).</p>
+                    </div>
+
+                    <!-- Tarjeta 5: Prophet -->
+                    <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg text-center transform transition duration-300 hover:-translate-y-2 hover:shadow-cyan-500/20">
+                        <div class="text-4xl font-bold text-cyan-400 mb-3">Fb</div>
+                        <h3 class="text-xl font-semibold mb-2 text-white">Prophet</h3>
+                        <p class="text-gray-400 text-sm">Modelo de pronóstico de series de tiempo desarrollado por Meta.</p>
+                    </div>
+
+                    <!-- Tarjeta 6: LightGBM -->
+                    <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg text-center transform transition duration-300 hover:-translate-y-2 hover:shadow-cyan-500/20">
+                        <div class="text-4xl font-bold text-cyan-400 mb-3">LGBM</div>
+                        <h3 class="text-xl font-semibold mb-2 text-white">LightGBM</h3>
+                        <p class="text-gray-400 text-sm">Modelo de Machine Learning (Gradient Boosting) para pronósticos.</p>
+                    </div>
+                    
+                    <!-- Tarjeta 7: Pandas & Numpy -->
+                    <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg text-center transform transition duration-300 hover:-translate-y-2 hover:shadow-cyan-500/20">
+                        <div class="text-4xl font-bold text-cyan-400 mb-3">Pd</div>
+                        <h3 class="text-xl font-semibold mb-2 text-white">Pandas & Numpy</h3>
+                        <p class="text-gray-400 text-sm">Bibliotecas para la manipulación, limpieza y cálculo de datos.</p>
+                    </div>
+
+                    <!-- Tarjeta 8: Plotly -->
+                    <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg text-center transform transition duration-300 hover:-translate-y-2 hover:shadow-cyan-500/20">
+                        <div class="text-4xl font-bold text-cyan-400 mb-3">Chart</div>
+                        <h3 class="text-xl font-semibold mb-2 text-white">Plotly</h3>
+                        <p class="text-gray-400 text-sm">Para la creación de las gráficas interactivas y dinámicas.</p>
+                    </div>
+                    
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 5: LLAMADO A LA ACCIÓN (CTA) -->
         <section class="py-24 px-4 sm:px-8 text-center bg-gradient-to-br from-[#014888] via-gray-900 to-gray-900">
             <div class="max-w-2xl mx-auto">
                 <h2 class="text-4xl font-bold text-white mb-6">Explora las Aplicaciones</h2>
@@ -172,7 +244,7 @@
                        target="_blank" 
                        rel="noopener noreferrer"
                        class="block w-full sm:w-auto px-8 py-4 rounded-lg font-semibold text-white bg-[#014888] hover:bg-[#0259a9] transition-all duration-300 shadow-lg hover:shadow-[#014888]/40 focus:outline-none focus:ring-2 focus:ring-[#014888] focus:ring-offset-2 focus:ring-offset-gray-900">
-                       Entrenar y Predecir
+                        Entrenar y Predecir
                     </a>
 
                     <!-- Botón 2: Predicciones Precalculadas -->
@@ -180,13 +252,13 @@
                        target="_blank" 
                        rel="noopener noreferrer"
                        class="block w-full sm:w-auto px-8 py-4 rounded-lg font-semibold text-white bg-[#de211b] hover:bg-[#f0322c] transition-all duration-300 shadow-lg hover:shadow-[#de211b]/40 focus:outline-none focus:ring-2 focus:ring-[#de211b] focus:ring-offset-2 focus:ring-offset-gray-900">
-                       Ver Precalculadas
+                        Ver Precalculadas
                     </a>
                 </div>
             </div>
         </section>
 
-        <!-- FOOTER -->
+        <!-- SECCIÓN 6: FOOTER -->
         <footer class="py-8 bg-gray-900 text-center">
             <p class="text-gray-500">© 2025 - Equipo PharmaSeven</p>
         </footer>
