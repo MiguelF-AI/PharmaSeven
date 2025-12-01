@@ -5,7 +5,6 @@
 ![Status](https://img.shields.io/badge/Status-Completed-success)
 ![Gemini AI](https://img.shields.io/badge/AI-Google%20Gemini-orange)
 
-> **Solución End-to-End para el Challenge Grupo Collins 2025B - Matemáticas Aplicadas a Ciencia de Datos.**
 
 ## 📖 Descripción del Proyecto
 
@@ -40,4 +39,5 @@ La solución no es solo un modelo estático, sino una **Aplicación Web Interact
 * **GenAI:** Google Generative AI (Gemini Pro)
 
 ---
+
 
