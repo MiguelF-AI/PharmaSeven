@@ -16,7 +16,6 @@ st.set_page_config(layout="wide", page_title="Dashboard de Predicción de Ventas
 warnings.filterwarnings('ignore')
 
 # --- Constantes y Nombres ---
-# ¡ASEGÚRATE DE QUE ESTA RUTA SEA CORRECTA EN GITHUB!
 NOMBRE_ARCHIVO_DATOS = 'data/datos_finales_listos_para_modelo.csv' 
 COLUMNA_PRODUCTO = 'Producto - Descripción'
 COLUMNA_CLIENTE = 'Cliente - Descripción'
@@ -24,8 +23,6 @@ COLUMNA_FECHA = 'Fecha'
 METRICAS_PREDICCION = ['Pedido_piezas', 'Pedido_MXN', 'Factura_piezas', 'Factura_MXN']
 
 # --- Funciones de Carga y Preparación de Datos ---
-
-# La carga de datos SÍ la dejamos en caché. Esto es seguro y rápido.
 @st.cache_data
 def cargar_datos(nombre_archivo):
     """Carga y pre-procesa los datos desde el CSV."""
@@ -51,7 +48,7 @@ def preparar_series_de_tiempo(df_filtrado, metrica_seleccionada):
     ts_data = ts_data.asfreq('MS', fill_value=0)
     ts_data = ts_data[metrica_seleccionada]
     
-    if len(ts_data) < 24: # Aumentamos el mínimo para modelos estacionales
+    if len(ts_data) < 24: 
         st.warning("Advertencia: Se tienen menos de 24 meses de datos. Las predicciones estacionales pueden no ser fiables.")
         if len(ts_data) < 12:
              return None
@@ -69,7 +66,6 @@ def crear_features(df, target_col):
     df['quarter'] = df.index.quarter
     
     # Creamos un lag de 12 meses (estacionalidad)
-    # Este es el feature más importante
     df['lag_12'] = df[target_col].shift(12)
     
     features = ['month', 'year', 'quarter', 'lag_12']
@@ -77,7 +73,6 @@ def crear_features(df, target_col):
     return df, features
 
 # --- Funciones de Métricas ---
-
 def calcular_metricas(y_true, y_pred):
     """
     Calcula métricas completas para evaluación de modelos.
@@ -88,19 +83,17 @@ def calcular_metricas(y_true, y_pred):
     - R2: Qué tan bien se ajusta el modelo (1.0 es perfecto, negativo es pésimo).
     """
     
-    # 1. RMSE (Ya lo tenías)
+    # 1. RMSE 
     rmse = np.sqrt(mean_squared_error(y_true, y_pred))
     
-    # 2. MAPE (Con protección para ceros)
-    # Solo calculamos MAPE donde el valor real NO es 0 para evitar divisiones por infinito
+    # 2. MAPE 
     mask = y_true != 0
     if mask.sum() > 0:
         mape = mean_absolute_percentage_error(y_true[mask], y_pred[mask])
     else:
-        mape = np.nan # O 0.0 si prefieres
+        mape = np.nan 
 
-    # 3. MAE (Error Absoluto Medio) - ¡NUEVA!
-    # Es más noble que el RMSE, no se asusta tanto con outliers.
+    # 3. MAE (Error Absoluto Medio) 
     mae = mean_absolute_error(y_true, y_pred)
 
     return {
@@ -110,7 +103,6 @@ def calcular_metricas(y_true, y_pred):
     }
 
 # --- Funciones de Modelos ---
-
 def run_model(model_name, model_func, ts_train_log, ts_test_log, ts_full_log, n_forecast):
     """
     Ejecuta el modelo usando datos logarítmicos, pero revierte la transformación
@@ -120,7 +112,6 @@ def run_model(model_name, model_func, ts_train_log, ts_test_log, ts_full_log, n_
     
     # --- A. FASE DE PRUEBA (Train/Test) ---
     # 1. Entrenar con datos LOG y predecir LOG
-    # Nota: Pasamos len(ts_test_log) para que sepa cuántos pasos predecir
     pred_test_log, _ = model_func(ts_train_log, len(ts_test_log))
     
     # 2. Revertir transformación (Log -> Real)
@@ -146,7 +137,6 @@ def run_model(model_name, model_func, ts_train_log, ts_test_log, ts_full_log, n_
         conf_int_real = np.expm1(conf_int_log).clip(lower=0)
     
     end_time = time.time()
-    # st.write(f"Modelo '{model_name}' completado en {end_time - start_time:.2f}s") # Opcional: comentar para limpiar UI
     
     return {
         'name': model_name,
@@ -155,8 +145,6 @@ def run_model(model_name, model_func, ts_train_log, ts_test_log, ts_full_log, n_
         'interval': conf_int_real,
         'test_prediction': pred_test_real
     }
-
-# --- Modelos Potentes (No planos) ---
 
 def model_holt_winters(ts_data, n_steps):
     """Suavizamiento Exponencial Triple (Holt-Winters)."""
@@ -249,7 +237,7 @@ def model_lightgbm(ts_data, n_steps):
         
     # 3. Entrenar el modelo LGBM
     model = lgb.LGBMRegressor(
-        objective='regression_l1', # MAE es más robusto a outliers que MSE (L2)
+        objective='regression_l1', 
         n_estimators=100,
         learning_rate=0.1,
         random_state=42
@@ -276,10 +264,9 @@ def model_lightgbm(ts_data, n_steps):
     
     forecast = pd.Series(forecast_values, index=future_dates)
     
-    return forecast, None # LGBM no da intervalos de confianza por defecto
+    return forecast, None 
 
 # --- Función de Gemini AI ---
-
 def get_gemini_analysis(metrics_summary, n_meses, metrica_nombre):
     """Llama a la API de Gemini con reintentos automáticos (Backoff)."""
     if not api_key:
@@ -340,10 +327,7 @@ if df is not None:
     # Lee la API Key desde los "Secrets" de Streamlit
     api_key = st.secrets.get("GEMINI_API_KEY")
     
-    # --- Lógica de Filtros Simple (¡SIN CACHÉ!) ---
-    # Esta lógica es simple. Streamlit recuerda la selección del
-    # multiselect entre ejecuciones mientras no se refresque la página.
-    
+    # --- Lógica de Filtros Simple ---
     productos_lista = df[COLUMNA_PRODUCTO].unique().tolist()
     # Inicia con todo seleccionado
     productos_seleccionados = st.sidebar.multiselect(
@@ -373,10 +357,9 @@ if df is not None:
             st.error("Error: No se encontró la 'GEMINI_API_KEY'.")
             st.error("Por favor, agrégala en 'Settings > Secrets' en Streamlit Cloud y reinicia la app.")
         else:
-            # ¡SIN CACHÉ! Esto se ejecuta siempre
             with st.spinner(f"Ejecutando predicción para {n_meses_prediccion} meses... Esto puede tardar unos minutos..."):
                 
-                # --- 1. Preparación de Datos (se hace siempre) ---
+                # --- 1. Preparación de Datos ---
                 df_filtrado = df[
                     (df[COLUMNA_PRODUCTO].isin(productos_seleccionados)) &
                     (df[COLUMNA_CLIENTE].isin(clientes_seleccionados))
@@ -386,17 +369,14 @@ if df is not None:
                 
                 if ts_full is not None:
                         
-                        # --- 2. División Train/Test (en ESCALA REAL) ---
-                            # ¡Creamos la división en escala real PRIMERO para los gráficos!
+                        # --- División Train/Test (en ESCALA REAL) ---
                             split_point = int(len(ts_full) * 0.8)
                             ts_train = ts_full.iloc[:split_point]  
                             ts_test = ts_full.iloc[split_point:]   
 
-                            # --- ¡TRANSFORMACIÓN LOGARÍTMICA AQUÍ! ---
                             # Ahora transformamos TODO
                             ts_full_log = np.log1p(ts_full)
                             
-                            # --- División Train/Test (en ESCALA LOG) ---
                             # Y volvemos a dividir los datos LOG para los modelos
                             ts_train_log = ts_full_log.iloc[:split_point]
                             ts_test_log = ts_full_log.iloc[split_point:]
@@ -406,7 +386,7 @@ if df is not None:
                                 st.error(f"Error: No hay suficientes datos para una división 80/20 válida (Train: {len(ts_train)}, Test: {len(ts_test)}).")
                                 st.stop()
                             else:
-                                # --- 3. Ejecución de Modelos ---
+                                # --- Ejecución de Modelos ---
                                 st.write("Entrenando modelos con transformación Log-Normal...")
                             
                             model_pipeline = [
@@ -415,7 +395,6 @@ if df is not None:
                                 ('Holt-Winters', model_holt_winters),
                                 ('LightGBM', model_lightgbm)
                             ]
-                            # (Tu código para inicializar diccionarios ya está aquí)
                             all_metrics = {}
                             all_forecasts = {}
                             all_intervals = {}
@@ -426,8 +405,6 @@ if df is not None:
                                     # CAMBIO: Pasamos las versiones _log de los datos
                                     resultado = run_model(name, func, ts_train_log, ts_test_log, ts_full_log, n_meses_prediccion)
                                     
-                                    # El resto del código sigue igual, porque run_model ya devuelve
-                                    # los datos convertidos a la escala real en 'forecast' y 'metrics'
                                     all_metrics[name] = resultado['metrics']
                                     all_forecasts[name] = resultado['forecast']
                                     all_intervals[name] = resultado['interval']
@@ -443,7 +420,7 @@ if df is not None:
                             df_forecast = pd.DataFrame(all_forecasts)
                             df_forecast.index.name = "Fecha"
     
-                            # --- 4. Análisis con Gemini ---
+                            # --- Análisis con Gemini ---
                             st.write("Enviando resultados a Gemini para análisis...")
                             with st.spinner("🧠 Gemini está pensando..."):
                                 analisis_gemini = get_gemini_analysis(df_metrics, n_meses_prediccion, metrica_seleccionada)
@@ -452,7 +429,7 @@ if df is not None:
                             st.markdown(analisis_gemini)
     
                             
-                            # --- 5. Gráfico de Comparación (Todos los modelos) ---
+                            # --- Gráfico de Comparación (Todos los modelos) ---
                             st.subheader("📊 Gráfico de Comparación (Todos los Modelos)")
                             fig = go.Figure()
                             fig.add_trace(go.Scatter(
@@ -467,16 +444,16 @@ if df is not None:
                             fig.update_layout(title=f"Comparación de Modelos - '{metrica_seleccionada}'")
                             st.plotly_chart(fig, use_container_width=True)
                             
-                            # --- 6. GRÁFICO DEL MEJOR MODELO (¡NUEVO!) ---
+                            # --- GRÁFICO DEL MEJOR MODELO ---
                             best_model_name = df_metrics.index[0]
                             best_forecast = all_forecasts[best_model_name]
-                            best_interval = all_intervals.get(best_model_name) # .get() no da error si no existe
+                            best_interval = all_intervals.get(best_model_name) 
     
                             st.subheader(f"📈 Análisis Detallado del Mejor Modelo: {best_model_name}")
                             
                             fig_best = go.Figure()
     
-                            # Intervalo de confianza (se dibuja primero para que quede de fondo)
+                            # Intervalo de confianza 
                             if best_interval is not None:
                                 fig_best.add_trace(go.Scatter(
                                     x=best_interval.index, y=best_interval['upper'],
@@ -508,7 +485,7 @@ if df is not None:
                             fig_best.update_layout(title=f"Predicción e Intervalo de Confianza - {best_model_name}")
                             st.plotly_chart(fig_best, use_container_width=True)
     
-                            # --- 5. GRÁFICO DE EVALUACIÓN (¡NUEVO!) ---
+                            # --- GRÁFICO DE EVALUACIÓN ---
                             st.subheader(f"🛠️ Gráfico de Evaluación del Modelo (Train/Test)")
                             
                             best_model_name_eval = df_metrics.index[0] # Tomamos el mejor modelo
@@ -519,14 +496,14 @@ if df is not None:
                             # 1. Datos de Entrenamiento
                             fig_eval.add_trace(go.Scatter(
                                 x=ts_train.index, y=ts_train.values,
-                                mode='lines', name='1. Datos de Entrenamiento (80%)', # <-- CAMBIO DE TEXTO
+                                mode='lines', name='1. Datos de Entrenamiento (80%)', 
                                 line=dict(color='blue')
                             ))
     
                             # 2. Datos Reales de Prueba
                             fig_eval.add_trace(go.Scatter(
                                 x=ts_test.index, y=ts_test.values,
-                                mode='lines+markers', name='2. Datos Reales (Test - 20%)', # <-- CAMBIO DE TEXTO
+                                mode='lines+markers', name='2. Datos Reales (Test - 20%)', 
                                 line=dict(color='black', width=3)
                             ))
     
@@ -538,7 +515,7 @@ if df is not None:
                             ))
                             
                             fig_eval.update_layout(
-                                title=f"Comparación: Real vs. Predicción en el set de Prueba (20%)", # <-- CAMBIO DE TEXTO
+                                title=f"Comparación: Real vs. Predicción en el set de Prueba (20%)", 
                                 xaxis_title="Fecha",
                                 yaxis_title=metrica_seleccionada,
                                 legend_title="Series"
@@ -560,6 +537,7 @@ if df is not None:
                                 st.caption("Valores más bajos son mejores.")
 else:
     st.info("Cargando datos... Si el error persiste, revisa el nombre/ruta del archivo.")
+
 
 
 
